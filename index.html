@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MENU THẬP CẨM ADR&PC | vinhmodlag.store</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    
+    <style>
+        :root { --primary: #00d2ff; --accent: #ff4757; --dark: #0d1117; --card: #161b22; --text: #c9d1d9; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: var(--text); margin: 0; }
+        
+        /* AUTH SECTION */
+        #auth-screen { position: fixed; inset: 0; background: var(--dark); display: flex; justify-content: center; align-items: center; z-index: 10000; padding: 20px; }
+        .auth-box { background: var(--card); padding: 30px; border-radius: 15px; width: 100%; max-width: 380px; border: 1px solid #30363d; text-align: center; }
+        .auth-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 10px; cursor: pointer; border-bottom: 2px solid transparent; color: #8b949e; }
+        .tab.active { color: var(--primary); border-color: var(--primary); font-weight: bold; }
+        
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-main { background: var(--primary); color: #000; margin-top: 10px; }
+        .btn-google { background: white; color: #000; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 15px; }
+
+        /* MAIN APP UI */
+        header { background: var(--card); padding: 15px 5%; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index: 100; }
+        .balance-tag { background: #238636; padding: 5px 15px; border-radius: 20px; color: white; font-weight: bold; }
+        .container { max-width: 1100px; margin: auto; padding: 20px; }
+
+        /* PRODUCT CARDS */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #30363d; }
+        .card h3 { margin-top: 0; color: var(--primary); }
+        .time-select { display: flex; gap: 5px; margin: 15px 0; }
+        .t-btn { flex: 1; padding: 8px; font-size: 12px; background: #0d1117; color: white; border: 1px solid #30363d; border-radius: 5px; cursor: pointer; }
+        .t-btn.active { background: var(--primary); color: black; font-weight: bold; }
+
+        /* ADMIN PANEL */
+        #admin-panel { display: none; background: #1c1313; border: 2px dashed var(--accent); padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+        .admin-row { border-bottom: 1px solid #333; padding: 10px 0; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h2 style="color: var(--primary); margin-bottom: 5px;">VinhModLag.store</h2>
+            <p style="font-size: 12px; color: #484f58; margin-bottom: 20px;">Hệ thống Menu Thập Cẩm ADR&PC</p>
+            
+            <div class="auth-tabs">
+                <div class="tab active" id="tab-login" onclick="switchAuth('login')">Đăng Nhập</div>
+                <div class="tab" id="tab-reg" onclick="switchAuth('reg')">Đăng Ký</div>
+            </div>
+
+            <div id="auth-fields">
+                <input type="email" id="email" placeholder="Email / Tên Admin">
+                <input type="password" id="pass" placeholder="Mật khẩu">
+                <button class="btn btn-main" onclick="handleAuth()">XÁC NHẬN</button>
+            </div>
+
+            <div style="margin: 15px 0; font-size: 11px; color: #484f58;">HOẶC</div>
+            <button class="btn btn-google" onclick="loginGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16"> Tiếp tục với Google
+            </button>
+        </div>
+    </div>
+
+    <div id="app" style="display: none;">
+        <header>
+            <h3 style="margin:0; color: var(--primary);">SHOP HOÀNG VINH</h3>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="balance-tag">💰 <span id="u-bal">0</span>đ</div>
+                <button onclick="location.reload()" style="background:none; border:none; color:var(--accent); cursor:pointer; font-weight:bold;">THOÁT</button>
+            </div>
+        </header>
+
+        <div class="container">
+            <div id="admin-panel">
+                <h3 style="color: var(--accent); margin-top:0;">🛠 QUẢN TRỊ WEBSITE</h3>
+                <div id="admin-editor"></div>
+            </div>
+
+            <div class="card" style="margin-bottom: 30px;">
+                <h3 style="color: #238636;">💳 NẠP THẺ CÀO TỰ ĐỘNG</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+                    <select id="card-type">
+                        <option value="VIETTEL">Viettel</option>
+                        <option value="ZING">Thẻ Zing</option>
+                        <option value="MOBIFONE">Mobifone</option>
+                    </select>
+                    <select id="card-val">
+                        <option value="10000">10.000đ</option>
+                        <option value="50000">50.000đ</option>
+                        <option value="100000">100.000đ</option>
+                        <option value="500000">500.000đ</option>
+                    </select>
+                    <input type="text" id="card-seri" placeholder="Số Seri">
+                    <input type="text" id="card-pin" placeholder="Mã pin (Thẻ dùng 1 lần)">
+                </div>
+                <button class="btn btn-main" onclick="topup()">NẠP THẺ NGAY</button>
+            </div>
+
+            <div class="grid" id="product-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // CẤU HÌNH FIREBASE (Thay bằng cấu hình của bạn)
+        const firebaseConfig = {
+            apiKey: "AIzaSy...",
+            authDomain: "vinhmodlag.firebaseapp.com",
+            databaseURL: "https://vinhmodlag.firebaseio.com",
+            projectId: "vinhmodlag",
+            appId: "1:xxx:web:xxx"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let authMode = 'login';
+        let isAdmin = false;
+        let userKey = "";
+
+        const prods = [
+            { id: 'acc', name: 'ACC CLONE LV 5 FREEFIRE', isTime: false },
+            { id: 'br', name: 'MENU BR MOD AD&PC', isTime: true },
+            { id: 'lag', name: 'FAKE LAG ADR', isTime: true }
+        ];
+
+        function switchAuth(m) {
+            authMode = m;
+            document.getElementById('tab-login').classList.toggle('active', m === 'login');
+            document.getElementById('tab-reg').classList.toggle('active', m === 'reg');
+        }
+
+        function handleAuth() {
+            const e = document.getElementById('email').value;
+            const p = document.getElementById('pass').value;
+
+            // KIỂM TRA ADMIN CỐ ĐỊNH
+            if(e === "HoangVinh" && p === "HV0308hv") {
+                isAdmin = true; userKey = "admin_vinh";
+                startApp("Hoàng Vinh (Admin)");
+                return;
+            }
+
+            if(authMode === 'reg') {
+                auth.createUserWithEmailAndPassword(e, p)
+                    .then(() => alert("Đăng ký thành công! Hãy đăng nhập."))
+                    .catch(err => alert("Lỗi: " + err.message));
+            } else {
+                auth.signInWithEmailAndPassword(e, p).catch(err => alert("Sai thông tin!"));
+            }
+        }
+
+        function loginGoogle() {
+            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        }
+
+        auth.onAuthStateChanged(user => {
+            if(user) {
+                isAdmin = false;
+                userKey = user.email.replace(/\./g, '_');
+                startApp(user.email);
+            }
+        });
+
+        function startApp(name) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            if(isAdmin) document.getElementById('admin-panel').style.display = 'block';
+
+            db.ref('users/' + userKey + '/bal').on('value', s => {
+                document.getElementById('u-bal').innerText = (s.val() || 0).toLocaleString();
+            });
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('product-list');
+            const editor = document.getElementById('admin-editor');
+            list.innerHTML = ""; editor.innerHTML = "";
+
+            prods.forEach(p => {
+                // UI NGƯỜI DÙNG
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h3>${p.name}</h3>
+                    ${p.isTime ? `
+                        <div class="time-select">
+                            <button class="t-btn active" onclick="selT('${p.id}',1,this)">1 Day</button>
+                            <button class="t-btn" onclick="selT('${p.id}',7,this)">7 Day</button>
+                            <button class="t-btn" onclick="selT('${p.id}',30,this)">30 Day</button>
+                        </div>
+                    ` : '<p style="font-size:12px; color:#64748b; margin: 25px 0;">Giá bán vĩnh viễn</p>'}
+                    <div id="price-${p.id}" style="font-size:24px; color:var(--primary); font-weight:bold; margin-bottom:15px;">0đ</div>
+                    <button class="btn btn-main" onclick="buy('${p.id}')">MUA NGAY</button>
+                `;
+                list.appendChild(card);
+
+                // UI ADMIN
+                if(isAdmin) {
+                    const row = document.createElement('div');
+                    row.className = 'admin-row';
+                    row.innerHTML = `
+                        <b>${p.name}</b><br>
+                        ${p.isTime ? `
+                            1d: <input id="ad-1-${p.id}" style="width:60px"> 
+                            7d: <input id="ad-7-${p.id}" style="width:60px"> 
+                            30d: <input id="ad-30-${p.id}" style="width:60px">
+                        ` : `Giá: <input id="ad-f-${p.id}" style="width:100px">`}
+                        <button onclick="save('${p.id}',${p.isTime})">Lưu giá</button>
+                    `;
+                    editor.appendChild(row);
+                }
+
+                db.ref('prods/' + p.id).on('value', s => {
+                    const d = s.val() || {p1:0, p7:0, p30:0, f:0};
+                    window['sel_'+p.id] = 1;
+                    updateUI(p.id, d, p.isTime);
+                    if(isAdmin) {
+                        if(p.isTime) {
+                            document.getElementById('ad-1-'+p.id).value = d.p1;
+                            document.getElementById('ad-7-'+p.id).value = d.p7;
+                            document.getElementById('ad-30-'+p.id).value = d.p30;
+                        } else document.getElementById('ad-f-'+p.id).value = d.f;
+                    }
+                });
+            });
+        }
+
+        function selT(id, day, btn) {
+            btn.parentElement.querySelectorAll('.t-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            window['sel_'+id] = day;
+            db.ref('prods/' + id).once('value', s => updateUI(id, s.val(), true));
+        }
+
+        function updateUI(id, data, isTime) {
+            const p = isTime ? data['p' + window['sel_'+id]] : data.f;
+            document.getElementById('price-'+id).innerText = parseInt(p).toLocaleString() + "đ";
+        }
+
+        function save(id, isTime) {
+            const data = isTime ? {
+                p1: document.getElementById('ad-1-'+id).value,
+                p7: document.getElementById('ad-7-'+id).value,
+                p30: document.getElementById('ad-30-'+id).value
+            } : { f: document.getElementById('ad-f-'+id).value };
+            db.ref('prods/' + id).set(data).then(() => alert("Đã cập nhật giá!"));
+        }
+
+        function topup() {
+            const pin = document.getElementById('card-pin').value;
+            const val = parseInt(document.getElementById('card-val').value);
+            if(!pin) return alert("Chưa nhập mã thẻ!");
+            db.ref('used_pins/' + pin).once('value', s => {
+                if(s.exists()) return alert("Mã thẻ này đã được sử dụng!");
+                db.ref('used_pins/' + pin).set(true);
+                db.ref('users/' + userKey + '/bal').once('value', v => {
+                    db.ref('users/' + userKey + '/bal').set((v.val() || 0) + val);
+                    alert("Nạp thành công " + val.toLocaleString() + "đ");
+                });
+            });
+        }
+
+        function buy(id) {
+            if(isAdmin) return alert("Admin dùng miễn phí!");
+            db.ref('prods/' + id).once('value', s => {
+                const isTime = prods.find(x => x.id === id).isTime;
+                const cost = isTime ? s.val()['p' + window['sel_'+id]] : s.val().f;
+                db.ref('users/' + userKey + '/bal').once('value', v => {
+                    const bal = v.val() || 0;
+                    if(bal >= parseInt(cost)) {
+                        db.ref('users/' + userKey + '/bal').set(bal - parseInt(cost));
+                        alert("Mua thành công! Nhắn cho Admin để nhận hàng.");
+                    } else alert("Bạn không đủ tiền!");
+                });
+            });
+        }
+    </script>
+</body>
+</html>
